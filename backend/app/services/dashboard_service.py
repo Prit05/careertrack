@@ -82,9 +82,11 @@ async def get_dashboard_summary(
 
     status_results = []
 
-    async for item in applications_collection.aggregate(
+    status_cursor = await applications_collection.aggregate(
         status_pipeline
-    ):
+    )
+
+    async for item in status_cursor:
         status_results.append(
             {
                 "status": item["_id"],
@@ -140,11 +142,3 @@ async def get_dashboard_summary(
             for item in upcoming_interviews
         ],
     }
-
-# Instead of asking:
-# "How many applications are there?"
-# over and over, we're telling MongoDB:
-#  - group applications by status
-#  - count each group
-#  - sort them
-# So MongoDB does the aggregation rather than us pulling every document into Python.
