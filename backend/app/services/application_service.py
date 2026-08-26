@@ -8,7 +8,11 @@ from app.schemas.application import (
     ApplicationCreate,
     ApplicationUpdate,
 )
-
+from app.db.mongodb import (
+    applications_collection,
+    jobs_collection,
+    resumes_collection,
+)
 
 def serialize_application(application: dict) -> dict:
     return {
@@ -32,7 +36,6 @@ async def create_application(
     user_id: ObjectId,
     application_data: ApplicationCreate,
 ) -> dict:
-
     if not ObjectId.is_valid(application_data.job_id):
         raise ValueError("Invalid job ID.")
 
@@ -48,6 +51,21 @@ async def create_application(
             "Job not found or does not belong to the current user."
         )
 
+    # Add the new validation here
+    if application_data.resume_id:
+        if not ObjectId.is_valid(application_data.resume_id):
+            raise ValueError("Invalid resume ID.")
+
+        resume = await resumes_collection.find_one(
+            {
+                "_id": ObjectId(application_data.resume_id),
+                "user_id": user_id,
+            }
+        )
+
+        if resume is None:
+            raise ValueError("Resume not found.")
+
     now = datetime.now(timezone.utc)
 
     document = {
@@ -56,7 +74,6 @@ async def create_application(
         "resume_id": (
             ObjectId(application_data.resume_id)
             if application_data.resume_id
-            and ObjectId.is_valid(application_data.resume_id)
             else None
         ),
         "status": application_data.status.value,
@@ -72,7 +89,6 @@ async def create_application(
     document["_id"] = result.inserted_id
 
     return serialize_application(document)
-
 
 async def get_application(
     user_id: ObjectId,

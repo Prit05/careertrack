@@ -1,5 +1,7 @@
 from pymongo import ASCENDING, AsyncMongoClient
 
+import gridfs
+
 from app.core.config import settings
 
 
@@ -10,6 +12,13 @@ database = client[settings.database_name]
 users_collection = database["users"]
 jobs_collection = database["jobs"]
 applications_collection = database["applications"]
+resumes_collection = database["resumes"]
+interviews_collection = database["interviews"]
+
+resume_files = gridfs.AsyncGridFSBucket(
+    database,
+    bucket_name="resumes",
+)
 
 
 async def initialize_database() -> None:
@@ -51,4 +60,22 @@ async def initialize_database() -> None:
             ("date_applied", ASCENDING),
         ],
         name="applications_by_user_date",
+    )
+
+    await resumes_collection.create_index(
+        [("user_id", ASCENDING)],
+        name="resumes_by_user",
+    )
+
+    await interviews_collection.create_index(
+        [("application_id", ASCENDING)],
+        name="interviews_by_application",
+    )
+
+    await interviews_collection.create_index(
+        [
+            ("user_id", ASCENDING),
+            ("scheduled_at", ASCENDING),
+        ],
+        name="interviews_by_user_date",
     )
