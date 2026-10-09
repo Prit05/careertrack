@@ -37,6 +37,10 @@ export default function Layout({
                     <NavLink to="/resumes">
                         Resumes
                     </NavLink>
+
+                    <NavLink to="/interviews">
+                        Interviews
+                    </NavLink>
                 </nav>
 
                 <div className="sidebar-footer">

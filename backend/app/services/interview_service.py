@@ -11,7 +11,10 @@ from app.schemas.interview import (
     InterviewCreate,
     InterviewUpdate,
 )
-
+from app.core.errors import (
+    InvalidResourceError,
+    ResourceNotFoundError,
+)
 
 def serialize_interview(interview: dict) -> dict:
     return {
@@ -32,7 +35,9 @@ async def create_interview(
 ) -> dict:
 
     if not ObjectId.is_valid(application_id):
-        raise ValueError("Invalid application ID.")
+        raise InvalidResourceError(
+            "Invalid application ID."
+        )
 
     application = await applications_collection.find_one(
         {

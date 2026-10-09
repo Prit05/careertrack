@@ -14,6 +14,7 @@ import Jobs from "./pages/Jobs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Resumes from "./pages/Resumes";
+import Interviews from "./pages/Interviews";
 
 function ProtectedPage({ children }) {
     return (
@@ -72,6 +73,15 @@ export default function App() {
                     element={
                         <ProtectedPage>
                             <Resumes />
+                        </ProtectedPage>
+                    }
+                />
+
+                <Route
+                    path="/interviews"
+                    element={
+                        <ProtectedPage>
+                            <Interviews />
                         </ProtectedPage>
                     }
                 />

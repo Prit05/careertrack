@@ -32,6 +32,9 @@ export default function Jobs() {
     const [error, setError] =
         useState("");
 
+    const [deleteTarget, setDeleteTarget] =
+        useState(null);
+
 
     async function loadJobs() {
         setLoading(true);
@@ -43,7 +46,9 @@ export default function Jobs() {
 
             setJobs(data);
         } catch (error) {
-            setError(error.message);
+            setError(
+                error.message,
+            );
         } finally {
             setLoading(false);
         }
@@ -56,42 +61,57 @@ export default function Jobs() {
 
 
     async function handleCreate(job) {
-        await createJob(job);
+        try {
+            await createJob(job);
 
-        setShowForm(false);
+            setShowForm(false);
 
-        await loadJobs();
+            await loadJobs();
+        } catch (error) {
+            setError(
+                error.message,
+            );
+        }
     }
 
 
     async function handleUpdate(job) {
-        await updateJob(
-            editingJob.id,
-            job,
-        );
+        try {
+            await updateJob(
+                editingJob.id,
+                job,
+            );
 
-        setEditingJob(null);
+            setEditingJob(null);
 
-        await loadJobs();
+            await loadJobs();
+        } catch (error) {
+            setError(
+                error.message,
+            );
+        }
     }
 
 
-    async function handleDelete(jobId) {
-        const confirmed =
-            window.confirm(
-                "Delete this job?",
-            );
-
-        if (!confirmed) {
+    async function confirmDelete() {
+        if (!deleteTarget) {
             return;
         }
+
+        const jobId =
+            deleteTarget.id;
+
+        setDeleteTarget(null);
+        setError("");
 
         try {
             await deleteJob(jobId);
 
             await loadJobs();
         } catch (error) {
-            setError(error.message);
+            setError(
+                error.message,
+            );
         }
     }
 
@@ -101,6 +121,7 @@ export default function Jobs() {
             <div className="page-header">
                 <div>
                     <h1>Jobs</h1>
+
                     <p>
                         Save the positions
                         you are interested in.
@@ -161,17 +182,21 @@ export default function Jobs() {
             )}
 
 
-            {loading ? (
-                <p>Loading jobs...</p>
-            ) : error ? (
+            {error && (
                 <p className="error">
                     {error}
                 </p>
+            )}
+
+
+            {loading ? (
+                <p>Loading jobs...</p>
             ) : jobs.length === 0 ? (
                 <div className="empty-state">
                     <h2>
                         No jobs found
                     </h2>
+
                     <p>
                         Add your first
                         internship position.
@@ -209,8 +234,8 @@ export default function Jobs() {
                                     <button
                                         className="danger-button"
                                         onClick={() =>
-                                            handleDelete(
-                                                job.id,
+                                            setDeleteTarget(
+                                                job,
                                             )
                                         }
                                     >
@@ -219,11 +244,13 @@ export default function Jobs() {
                                 </div>
                             </div>
 
+
                             {job.location && (
                                 <p>
                                     {job.location}
                                 </p>
                             )}
+
 
                             {job.required_skills
                                 ?.length > 0 && (
@@ -244,6 +271,72 @@ export default function Jobs() {
                             )}
                         </article>
                     ))}
+                </div>
+            )}
+
+
+            {deleteTarget && (
+                <div
+                    className="modal-backdrop"
+                    onClick={() =>
+                        setDeleteTarget(
+                            null,
+                        )
+                    }
+                >
+                    <div
+                        className="confirm-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-job-title"
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
+                    >
+                        <h2 id="delete-job-title">
+                            Delete job?
+                        </h2>
+
+                        <p>
+                            Are you sure you want
+                            to delete{" "}
+                            <strong>
+                                {deleteTarget.title}
+                            </strong>{" "}
+                            from{" "}
+                            <strong>
+                                {deleteTarget.company}
+                            </strong>
+                            ?
+                        </p>
+
+                        <p>
+                            This action cannot
+                            be undone.
+                        </p>
+
+                        <div className="form-actions">
+                            <button
+                                className="secondary-button"
+                                onClick={() =>
+                                    setDeleteTarget(
+                                        null,
+                                    )
+                                }
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                className="danger-button"
+                                onClick={
+                                    confirmDelete
+                                }
+                            >
+                                Delete Job
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

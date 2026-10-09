@@ -49,11 +49,17 @@ export default function Applications() {
     const [loading, setLoading] =
         useState(true);
 
+    const [saving, setSaving] =
+        useState(false);
+
     const [error, setError] =
         useState("");
 
     const [showForm, setShowForm] =
         useState(false);
+
+    const [deleteTarget, setDeleteTarget] =
+        useState(null);
 
 
     async function loadData(
@@ -73,6 +79,7 @@ export default function Applications() {
                     page: selectedPage,
                     limit: 10,
                 }),
+
                 getJobs(),
             ]);
 
@@ -85,8 +92,11 @@ export default function Applications() {
             );
 
             setJobs(jobsData);
+
         } catch (error) {
-            setError(error.message);
+            setError(
+                error.message,
+            );
         } finally {
             setLoading(false);
         }
@@ -95,6 +105,7 @@ export default function Applications() {
 
     useEffect(() => {
         loadData(1);
+        setPage(1);
     }, [status]);
 
 
@@ -111,8 +122,19 @@ export default function Applications() {
     ) {
         event.preventDefault();
 
+        /*
+         * IMPORTANT:
+         * Save the form element BEFORE
+         * awaiting the API request.
+         */
+        const form =
+            event.currentTarget;
+
+        setSaving(true);
+        setError("");
+
         const formData =
-            new FormData(event.currentTarget);
+            new FormData(form);
 
         const jobId =
             formData.get("job_id");
@@ -123,31 +145,44 @@ export default function Applications() {
         try {
             await createApplication({
                 job_id: jobId,
+
                 status: statusValue,
+
                 date_applied:
                     formData.get(
                         "date_applied",
                     ) || null,
+
                 follow_up_date:
                     formData.get(
                         "follow_up_date",
                     ) || null,
+
                 notes:
                     formData.get(
                         "notes",
                     ) || null,
             });
 
-            event.currentTarget.reset();
+            /*
+             * Reset the captured form
+             * after successful submission.
+             */
+            form.reset();
 
             setShowForm(false);
 
-            await loadData(1);
             setPage(1);
+
+            await loadData(1);
+
         } catch (error) {
             setError(
                 error.message,
             );
+
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -165,6 +200,7 @@ export default function Applications() {
             );
 
             await loadData(page);
+
         } catch (error) {
             setError(
                 error.message,
@@ -173,17 +209,16 @@ export default function Applications() {
     }
 
 
-    async function handleDelete(
-        applicationId,
-    ) {
-        const confirmed =
-            window.confirm(
-                "Delete this application?",
-            );
-
-        if (!confirmed) {
+    async function confirmDelete() {
+        if (!deleteTarget) {
             return;
         }
+
+        const applicationId =
+            deleteTarget.id;
+
+        setDeleteTarget(null);
+        setError("");
 
         try {
             await deleteApplication(
@@ -191,6 +226,7 @@ export default function Applications() {
             );
 
             await loadData(page);
+
         } catch (error) {
             setError(
                 error.message,
@@ -241,6 +277,7 @@ export default function Applications() {
 
                     <label>
                         Job
+
                         <select
                             name="job_id"
                             required
@@ -268,8 +305,10 @@ export default function Applications() {
                         </select>
                     </label>
 
+
                     <label>
                         Status
+
                         <select
                             name="status"
                             defaultValue="applied"
@@ -291,34 +330,53 @@ export default function Applications() {
                         </select>
                     </label>
 
+
                     <label>
                         Date Applied
+
                         <input
                             type="date"
                             name="date_applied"
                         />
                     </label>
 
+
                     <label>
                         Follow-up Date
+
                         <input
                             type="date"
                             name="follow_up_date"
                         />
                     </label>
 
+
                     <label>
                         Notes
+
                         <textarea
                             name="notes"
                             rows="4"
                         />
                     </label>
 
-                    <button type="submit">
-                        Save Application
+
+                    <button
+                        type="submit"
+                        disabled={saving}
+                    >
+                        {saving
+                            ? "Saving..."
+                            : "Save Application"}
                     </button>
                 </form>
+            )}
+
+
+            {error && (
+                <p className="error">
+                    {error}
+                </p>
             )}
 
 
@@ -328,7 +386,8 @@ export default function Applications() {
                     value={search}
                     onChange={(event) =>
                         setSearch(
-                            event.target.value,
+                            event.target
+                                .value,
                         )
                     }
                 />
@@ -337,7 +396,8 @@ export default function Applications() {
                     value={status}
                     onChange={(event) => {
                         setStatus(
-                            event.target.value,
+                            event.target
+                                .value,
                         );
                         setPage(1);
                     }}
@@ -372,23 +432,23 @@ export default function Applications() {
                 <p>
                     Loading applications...
                 </p>
-            ) : error ? (
-                <p className="error">
-                    {error}
-                </p>
-            ) : applications.length ===
-              0 ? (
+
+            ) : applications.length === 0 ? (
+
                 <div className="empty-state">
                     <h2>
                         No applications
                     </h2>
+
                     <p>
                         Start tracking
                         your internship
                         applications.
                     </p>
                 </div>
+
             ) : (
+
                 <>
                     <div className="application-list">
                         {applications.map(
@@ -411,13 +471,15 @@ export default function Applications() {
                                             <div>
                                                 <h2>
                                                     {
-                                                        job?.title
+                                                        job?.title ??
+                                                        "Unknown position"
                                                     }
                                                 </h2>
 
                                                 <p>
                                                     {
-                                                        job?.company
+                                                        job?.company ??
+                                                        "Unknown company"
                                                     }
                                                 </p>
                                             </div>
@@ -425,14 +487,15 @@ export default function Applications() {
                                             <button
                                                 className="danger-button"
                                                 onClick={() =>
-                                                    handleDelete(
-                                                        application.id,
+                                                    setDeleteTarget(
+                                                        application,
                                                     )
                                                 }
                                             >
                                                 Delete
                                             </button>
                                         </div>
+
 
                                         <div className="application-meta">
                                             <span>
@@ -475,25 +538,30 @@ export default function Applications() {
                                             </select>
                                         </div>
 
+
                                         {application
                                             .date_applied && (
                                             <p>
                                                 Applied:{" "}
                                                 {
-                                                    application.date_applied
+                                                    application
+                                                        .date_applied
                                                 }
                                             </p>
                                         )}
+
 
                                         {application
                                             .follow_up_date && (
                                             <p>
                                                 Follow-up:{" "}
                                                 {
-                                                    application.follow_up_date
+                                                    application
+                                                        .follow_up_date
                                                 }
                                             </p>
                                         )}
+
 
                                         {application.notes && (
                                             <p>
@@ -507,6 +575,7 @@ export default function Applications() {
                             },
                         )}
                     </div>
+
 
                     <div className="pagination">
                         <button
@@ -529,10 +598,12 @@ export default function Applications() {
                             Previous
                         </button>
 
+
                         <span>
                             Page {page}{" "}
                             of {pages}
                         </span>
+
 
                         <button
                             disabled={
@@ -555,6 +626,49 @@ export default function Applications() {
                         </button>
                     </div>
                 </>
+            )}
+
+
+            {deleteTarget && (
+                <div className="modal-backdrop">
+                    <div
+                        className="confirm-modal"
+                        role="dialog"
+                        aria-modal="true"
+                    >
+                        <h2>
+                            Delete application?
+                        </h2>
+
+                        <p>
+                            This will permanently
+                            remove this application
+                            from CareerTrack.
+                        </p>
+
+                        <div className="form-actions">
+                            <button
+                                className="secondary-button"
+                                onClick={() =>
+                                    setDeleteTarget(
+                                        null,
+                                    )
+                                }
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                className="danger-button"
+                                onClick={
+                                    confirmDelete
+                                }
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

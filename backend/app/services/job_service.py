@@ -3,9 +3,13 @@ from datetime import datetime, timezone
 from bson import ObjectId
 from pymongo import ReturnDocument
 
+from app.core.utils import date_to_datetime
 from app.db.mongodb import jobs_collection
 from app.schemas.job import JobCreate, JobUpdate
-
+from app.core.errors import (
+    InvalidResourceError,
+    ResourceNotFoundError,
+)
 
 def serialize_job(job: dict) -> dict:
     return {
@@ -29,20 +33,28 @@ async def create_job(user_id: ObjectId, job_data: JobCreate) -> dict:
     now = datetime.now(timezone.utc)
 
     document = {
-        "user_id": user_id,
-        "company": job_data.company.strip(),
-        "title": job_data.title.strip(),
-        "location": job_data.location,
-        "employment_type": job_data.employment_type,
-        "job_url": str(job_data.job_url) if job_data.job_url else None,
-        "description": job_data.description,
-        "required_skills": job_data.required_skills,
-        "preferred_skills": job_data.preferred_skills,
-        "posted_date": job_data.posted_date,
-        "deadline": job_data.deadline,
-        "created_at": now,
-        "updated_at": now,
-    }
+    "user_id": user_id,
+    "company": job_data.company.strip(),
+    "title": job_data.title.strip(),
+    "location": job_data.location,
+    "employment_type": job_data.employment_type,
+    "job_url": (
+        str(job_data.job_url)
+        if job_data.job_url
+        else None
+    ),
+    "description": job_data.description,
+    "required_skills": job_data.required_skills,
+    "preferred_skills": job_data.preferred_skills,
+    "posted_date": date_to_datetime(
+        job_data.posted_date
+    ),
+    "deadline": date_to_datetime(
+        job_data.deadline
+    ),
+    "created_at": now,
+    "updated_at": now,
+}
 
     result = await jobs_collection.insert_one(document)
 
@@ -89,10 +101,12 @@ async def get_user_jobs(
 async def get_job(
     user_id: ObjectId,
     job_id: str,
-) -> dict | None:
+) -> dict:
 
     if not ObjectId.is_valid(job_id):
-        return None
+        raise InvalidResourceError(
+            "Invalid job ID."
+        )
 
     job = await jobs_collection.find_one(
         {
@@ -102,10 +116,11 @@ async def get_job(
     )
 
     if job is None:
-        return None
+        raise ResourceNotFoundError(
+            "Job not found."
+        )
 
     return serialize_job(job)
-
 
 async def update_job(
     user_id: ObjectId,

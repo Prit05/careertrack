@@ -5,30 +5,28 @@ import {
 
 import {
     deleteResume,
-    getResumeDownloadUrl,
+    downloadResume,
     getResumes,
     uploadResume,
 } from "../api/resumes";
 
 
 export default function Resumes() {
-    const [resumes, setResumes] =
-        useState([]);
+    const [resumes, setResumes] = useState([]);
 
-    const [name, setName] =
-        useState("");
+    const [name, setName] = useState("");
 
-    const [file, setFile] =
-        useState(null);
+    const [file, setFile] = useState(null);
 
-    const [loading, setLoading] =
-        useState(true);
+    const [loading, setLoading] = useState(true);
 
-    const [uploading, setUploading] =
-        useState(false);
+    const [uploading, setUploading] = useState(false);
 
-    const [error, setError] =
-        useState("");
+    const [downloadingId, setDownloadingId] = useState(null);
+
+    const [error, setError] = useState("");
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
 
     async function loadResumes() {
@@ -92,17 +90,40 @@ export default function Resumes() {
     }
 
 
-    async function handleDelete(
-        resumeId,
+    async function handleDownload(
+        resume,
     ) {
-        const confirmed =
-            window.confirm(
-                "Delete this resume?",
-            );
+        setDownloadingId(
+            resume.id,
+        );
 
-        if (!confirmed) {
+        setError("");
+
+        try {
+            await downloadResume(
+                resume.id,
+                resume.filename,
+            );
+        } catch (error) {
+            setError(
+                error.message,
+            );
+        } finally {
+            setDownloadingId(null);
+        }
+    }
+
+
+    async function confirmDelete() {
+        if (!deleteTarget) {
             return;
         }
+
+        const resumeId =
+            deleteTarget.id;
+
+        setDeleteTarget(null);
+        setError("");
 
         try {
             await deleteResume(
@@ -125,9 +146,7 @@ export default function Resumes() {
                     <h1>Resumes</h1>
 
                     <p>
-                        Manage the resume
-                        versions you send
-                        with applications.
+                        Keep track of the exact resume version used for each application.
                     </p>
                 </div>
             </div>
@@ -148,9 +167,12 @@ export default function Resumes() {
 
                     <input
                         value={name}
-                        onChange={(event) =>
+                        onChange={(
+                            event,
+                        ) =>
                             setName(
-                                event.target
+                                event
+                                    .target
                                     .value,
                             )
                         }
@@ -165,11 +187,14 @@ export default function Resumes() {
                     <input
                         type="file"
                         accept=".pdf,application/pdf"
-                        onChange={(event) =>
+                        onChange={(
+                            event,
+                        ) =>
                             setFile(
-                                event.target
+                                event
+                                    .target
                                     .files?.[0] ??
-                                    null,
+                                null,
                             )
                         }
                         required
@@ -236,6 +261,10 @@ export default function Resumes() {
                                             }
                                         </p>
                                     </div>
+
+                                    <span className="tag">
+                                        PDF
+                                    </span>
                                 </div>
 
                                 <p>
@@ -244,7 +273,7 @@ export default function Resumes() {
                                     }
                                 </p>
 
-                                <p>
+                                <p className="muted">
                                     {(
                                         resume.size_bytes /
                                         1024
@@ -255,21 +284,28 @@ export default function Resumes() {
                                 </p>
 
                                 <div className="card-actions">
-                                    <a
-                                        href={getResumeDownloadUrl(
-                                            resume.id,
-                                        )}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                    <button
+                                        onClick={() =>
+                                            handleDownload(
+                                                resume,
+                                            )
+                                        }
+                                        disabled={
+                                            downloadingId ===
+                                            resume.id
+                                        }
                                     >
-                                        Download
-                                    </a>
+                                        {downloadingId ===
+                                            resume.id
+                                            ? "Downloading..."
+                                            : "Download"}
+                                    </button>
 
                                     <button
                                         className="danger-button"
                                         onClick={() =>
-                                            handleDelete(
-                                                resume.id,
+                                            setDeleteTarget(
+                                                resume,
                                             )
                                         }
                                     >
@@ -279,6 +315,73 @@ export default function Resumes() {
                             </article>
                         ),
                     )}
+                </div>
+            )}
+
+
+            {deleteTarget && (
+                <div
+                    className="modal-backdrop"
+                    onClick={() =>
+                        setDeleteTarget(
+                            null,
+                        )
+                    }
+                >
+                    <div
+                        className="confirm-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-resume-title"
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
+                    >
+                        <h2 id="delete-resume-title">
+                            Delete resume?
+                        </h2>
+
+                        <p>
+                            Are you sure you want
+                            to delete{" "}
+                            <strong>
+                                {deleteTarget.name}
+                            </strong>{" "}
+                            (Version{" "}
+                            <strong>
+                                {deleteTarget.version}
+                            </strong>
+                            )?
+                        </p>
+
+                        <p>
+                            This will permanently
+                            remove the saved resume
+                            file from CareerTrack.
+                        </p>
+
+                        <div className="form-actions">
+                            <button
+                                className="secondary-button"
+                                onClick={() =>
+                                    setDeleteTarget(
+                                        null,
+                                    )
+                                }
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                className="danger-button"
+                                onClick={
+                                    confirmDelete
+                                }
+                            >
+                                Delete Resume
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

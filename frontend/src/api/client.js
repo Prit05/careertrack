@@ -1,13 +1,27 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL =
+    import.meta.env.VITE_API_URL;
+
+
+export class ApiError extends Error {
+    constructor(
+        message,
+        status,
+    ) {
+        super(message);
+        this.name = "ApiError";
+        this.status = status;
+    }
+}
 
 
 export async function apiRequest(
     endpoint,
     options = {},
 ) {
-    const token = localStorage.getItem(
-        "access_token",
-    );
+    const token =
+        localStorage.getItem(
+            "access_token",
+        );
 
     const headers = {
         ...options.headers,
@@ -21,13 +35,26 @@ export async function apiRequest(
             `Bearer ${token}`;
     }
 
-    const response = await fetch(
-        `${API_URL}${endpoint}`,
-        {
-            ...options,
-            headers,
-        },
-    );
+    let response;
+
+    try {
+        response = await fetch(
+            `${API_URL}${endpoint}`,
+            {
+                ...options,
+                headers,
+            },
+        );
+    } catch {
+        throw new ApiError(
+            "Unable to connect to the CareerTrack API.",
+            0,
+        );
+    }
+
+    if (response.status === 204) {
+        return null;
+    }
 
     const contentType =
         response.headers.get(
@@ -42,9 +69,10 @@ export async function apiRequest(
             : null;
 
     if (!response.ok) {
-        throw new Error(
+        throw new ApiError(
             data?.detail ||
-            `Request failed with status ${response.status}`,
+                "The request failed.",
+            response.status,
         );
     }
 

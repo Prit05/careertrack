@@ -4,7 +4,10 @@ from bson import ObjectId
 from fastapi import UploadFile
 
 from app.db.mongodb import resume_files, resumes_collection
-
+from app.core.errors import (
+    InvalidResourceError,
+    ResourceNotFoundError,
+)
 
 MAX_RESUME_SIZE = 5 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {
@@ -125,7 +128,9 @@ async def get_resume_for_download(
 ) -> tuple[dict, object] | None:
 
     if not ObjectId.is_valid(resume_id):
-        return None
+        raise InvalidResourceError(
+            "Invalid resume ID."
+        )
 
     resume = await resumes_collection.find_one(
         {
@@ -135,14 +140,18 @@ async def get_resume_for_download(
     )
 
     if resume is None:
-        return None
+        raise ResourceNotFoundError(
+            "Resume not found."
+        )
 
     try:
         stream = await resume_files.open_download_stream(
             resume["file_id"]
         )
     except Exception:
-        return None
+        raise ResourceNotFoundError(
+            "Failed to open resume for download."
+        )
 
     return resume, stream
 

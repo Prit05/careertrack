@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from bson import ObjectId
 from pymongo import ReturnDocument
+from app.core.utils import date_to_datetime
 
 from app.db.mongodb import applications_collection, jobs_collection
 from app.schemas.application import (
@@ -12,6 +13,10 @@ from app.db.mongodb import (
     applications_collection,
     jobs_collection,
     resumes_collection,
+)
+from app.core.errors import (
+    InvalidResourceError,
+    ResourceNotFoundError,
 )
 
 def serialize_application(application: dict) -> dict:
@@ -77,8 +82,12 @@ async def create_application(
             else None
         ),
         "status": application_data.status.value,
-        "date_applied": application_data.date_applied,
-        "follow_up_date": application_data.follow_up_date,
+        "date_applied": date_to_datetime(
+            application_data.date_applied
+        ),
+        "follow_up_date": date_to_datetime(
+            application_data.follow_up_date
+        ),
         "notes": application_data.notes,
         "created_at": now,
         "updated_at": now,
@@ -96,7 +105,9 @@ async def get_application(
 ) -> dict | None:
 
     if not ObjectId.is_valid(application_id):
-        return None
+        raise InvalidResourceError(
+                    "Invalid application ID."
+                )
 
     application = await applications_collection.find_one(
         {
@@ -106,7 +117,9 @@ async def get_application(
     )
 
     if application is None:
-        return None
+        raise ResourceNotFoundError(
+            "Application not found."
+        )
 
     return serialize_application(application)
 
